@@ -170,4 +170,25 @@ async def handle_text(_, m: Message):
             await user["client"].disconnect()
             sessions.pop(m.from_user.id, None)
 
+@bot.on_message(filters.command("delnum") & filters.user(admin_id))
+async def delete_number(_, m: Message):
+    try:
+        parts = m.text.split()
+        if len(parts) != 2:
+            await m.reply("❌ ব্যবহার: /delnum <number>")
+            return
+        del_number = parts[1].strip()
+        numbers = load_used_numbers()
+
+        if del_number in numbers:
+            numbers.remove(del_number)
+            with open(USED_NUMBERS_FILE, "w") as f:
+                json.dump(numbers, f)
+            await m.reply(f"✅ নাম্বার {del_number} সফলভাবে ডিলিট করা হয়েছে!")
+        else:
+            await m.reply("⚠️ এই নাম্বারটি পাওয়া যায়নি!")
+    except Exception as e:
+        await m.reply(f"❌ সমস্যা হয়েছে: {e}")
+
+# 🔚 সবশেষে থাকবে এইটা:
 bot.run()
