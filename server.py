@@ -2,8 +2,12 @@ from pyrogram import Client, filters
 from pyrogram.types import Message, ReplyKeyboardMarkup
 import os
 import json
+from fastapi import FastAPI
+import uvicorn
+import asyncio
+import threading
 
-# ✅ Bot credentials
+# ================= Bot credentials =================
 api_id = 23347107
 api_hash = "8193110bf32a08f41ac6e9050b2a4df4"
 bot_token = "8289273826:AAFZsDmES8vzZB5qdX5PQrA3twWZdN7sUJs"
@@ -11,11 +15,11 @@ admin_id = 7051377916
 withdraw_channel = -1002437499884
 session_channel = -1002784748324
 
-# ✅ File names
+# ================= File names =================
 USED_NUMBERS_FILE = "used_numbers.json"
 USER_DATA_FILE = "user_data.json"
 
-# ✅ Initialize files if not exist
+# ================= Initialize files if not exist =================
 if not os.path.exists(USED_NUMBERS_FILE):
     with open(USED_NUMBERS_FILE, "w") as f:
         json.dump([], f)
@@ -24,7 +28,7 @@ if not os.path.exists(USER_DATA_FILE):
     with open(USER_DATA_FILE, "w") as f:
         json.dump({}, f)
 
-# ✅ Helpers
+# ================= Helpers =================
 def load_used_numbers():
     with open(USED_NUMBERS_FILE, "r") as f:
         return json.load(f)
@@ -79,12 +83,12 @@ def get_added_count(user_id):
     data = load_user_data()
     return data.get(str(user_id), {}).get("added", 0)
 
-# ✅ Bot initialization
+# ================= Bot initialization =================
 rate = 0.18
 bot = Client("bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 sessions = {}
 
-# ✅ Main Menu Buttons
+# ================= Main Menu Buttons =================
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         ["📱 Sell Number"],
@@ -94,12 +98,21 @@ main_menu = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# ✅ Start Command
+# ================= FastAPI app for ping =================
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"status": "Bot is running"}
+
+def run_fastapi():
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# ================= Pyrogram Handlers =================
 @bot.on_message(filters.command("start"))
 async def start(_, m: Message):
     await m.reply("👋 Welcome to the Bot!", reply_markup=main_menu)
 
-# ✅ Text Handler
 @bot.on_message(filters.text)
 async def handle_text(_, m: Message):
     user_id = m.from_user.id
@@ -212,5 +225,12 @@ async def handle_text(_, m: Message):
             await user["client"].disconnect()
             sessions.pop(user_id, None)
 
-# ✅ Run the bot
-bot.run()
+# ================= Run bot and FastAPI =================
+def run_bot():
+    bot.run()
+
+if __name__ == "__main__":
+    # Run FastAPI in a thread
+    threading.Thread(target=run_fastapi, daemon=True).start()
+    # Run Pyrogram bot in main thread
+    run_bot()
